@@ -1,10 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const API_KEY = import.meta.env.VITE_API_KEY;
 
-function headers(includeApiKey = false) {
-  const h = { "Content-Type": "application/json" };
-  if (includeApiKey && API_KEY) h["X-API-Key"] = API_KEY;
-  return h;
+function headers() {
+  return { "Content-Type": "application/json" };
 }
 
 async function handleJson(res) {
