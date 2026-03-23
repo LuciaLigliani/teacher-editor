@@ -64,3 +64,11 @@ export async function getPublished() {
   const res = await fetch(`${BASE_URL}/api/published`);
   return handleJson(res);
 }
+
+export async function deleteRecipe(id) {
+  const res = await fetch(`${BASE_URL}/api/recipes/${id}`, {
+    method: "DELETE",
+    headers: headers(),
+  });
+  return handleJson(res);
+}

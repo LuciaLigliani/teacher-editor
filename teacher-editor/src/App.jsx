@@ -7,6 +7,7 @@ import {
   updateRecipe,
   publishRecipe,
   getPublished,
+  deleteRecipe,
 } from "./api";
 import RecipeForm from "./components/RecipeForm";
 
@@ -218,6 +219,28 @@ export default function App() {
     }
   }
 
+  async function removeRecipe(id) {
+    const confirmed = window.confirm("Are you sure you want to delete this recipe?");
+    if (!confirmed) return;
+
+    setError(null);
+
+    try {
+      await deleteRecipe(id);
+
+      // If you were editing the deleted recipe, go back to list
+      if (editingId === id) {
+        setMode("list");
+        setEditingId(null);
+        setRecipeDraft(null);
+      }
+
+      await refreshAll();
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+  }
+
   return (
     <div
       style={{
@@ -267,9 +290,15 @@ export default function App() {
                   <td>{r.title}</td>
                   <td>{r.updatedAt}</td>
                   <td>{r.version}</td>
-                  <td style={{ display: "flex", gap: 8 }}>
+                  <td style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button onClick={() => openEdit(r.id)}>Edit</button>
                     <button onClick={() => publish(r.id)}>Publish</button>
+                    <button
+                      onClick={() => removeRecipe(r.id)}
+                      style={{ background: "#ffe6e6", border: "1px solid #cc9999" }}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
