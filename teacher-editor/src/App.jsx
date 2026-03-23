@@ -8,6 +8,7 @@ import {
   publishRecipe,
   getPublished,
 } from "./api";
+import RecipeForm from "./components/RecipeForm";
 
 function emptyRecipe() {
   return {
@@ -97,8 +98,97 @@ export default function App() {
   function updateField(field, value) {
     setRecipeDraft((prev) => ({ ...prev, [field]: value }));
   }
+  function validateRecipe(recipe) {
+    if (!recipe) return "Recipe is missing.";
+
+    if (!recipe.title || !recipe.title.trim()) {
+      return "Title is required.";
+    }
+
+    if (!recipe.description || !recipe.description.trim()) {
+      return "Description is required.";
+    }
+
+    if (!recipe.chefIntroLines || recipe.chefIntroLines.length === 0) {
+      return "At least one chef intro line is required.";
+    }
+
+    if (!recipe.ingredients || recipe.ingredients.length === 0) {
+      return "At least one ingredient is required.";
+    }
+
+    for (let i = 0; i < recipe.ingredients.length; i++) {
+      const ing = recipe.ingredients[i];
+      if (!ing.id || !ing.id.trim()) return `Ingredient ${i + 1}: id is required.`;
+      if (!ing.displayName || !ing.displayName.trim()) return `Ingredient ${i + 1}: displayName is required.`;
+      if (!ing.qty || !ing.qty.trim()) return `Ingredient ${i + 1}: qty is required.`;
+    }
+
+    if (!recipe.tools || recipe.tools.length === 0) {
+      return "At least one tool is required.";
+    }
+
+    if (!recipe.steps || recipe.steps.length === 0) {
+      return "At least one step is required.";
+    }
+
+    for (let i = 0; i < recipe.steps.length; i++) {
+      const step = recipe.steps[i];
+
+      if (!step.id || !step.id.trim()) return `Step ${i + 1}: id is required.`;
+      if (!step.type || !step.type.trim()) return `Step ${i + 1}: type is required.`;
+      if (!step.station || !step.station.trim()) return `Step ${i + 1}: station is required.`;
+      if (!step.inputItems || step.inputItems.length === 0) return `Step ${i + 1}: at least one inputItem is required.`;
+      if (!step.outputItem || !step.outputItem.trim()) return `Step ${i + 1}: outputItem is required.`;
+      if (!step.chefLine || !step.chefLine.trim()) return `Step ${i + 1}: chefLine is required.`;
+      if (!step.uiText || !step.uiText.trim()) return `Step ${i + 1}: uiText is required.`;
+
+      if ((step.type === "boil" || step.type === "cook")) {
+        if (step.durationSec === undefined || step.durationSec === null || Number(step.durationSec) <= 0) {
+          return `Step ${i + 1}: durationSec must be greater than 0 for ${step.type}.`;
+        }
+      }
+    }
+
+    if (!recipe.customerQuiz || recipe.customerQuiz.length === 0) {
+      return "At least one quiz question is required.";
+    }
+
+    for (let i = 0; i < recipe.customerQuiz.length; i++) {
+      const q = recipe.customerQuiz[i];
+
+      if (!q.question || !q.question.trim()) {
+        return `Quiz question ${i + 1}: question text is required.`;
+      }
+
+      if (!q.choices || q.choices.length < 2) {
+        return `Quiz question ${i + 1}: at least two choices are required.`;
+      }
+
+      for (let j = 0; j < q.choices.length; j++) {
+        if (!q.choices[j] || !q.choices[j].trim()) {
+          return `Quiz question ${i + 1}: choice ${j + 1} is empty.`;
+        }
+      }
+
+      if (q.correctIndex < 0 || q.correctIndex >= q.choices.length) {
+        return `Quiz question ${i + 1}: correctIndex is out of range.`;
+      }
+    }
+
+    if (!recipe.serveItemId || !recipe.serveItemId.trim()) {
+      return "serveItemId is required.";
+    }
+
+    return null;
+  }
 
   async function save() {
+    const validationError = validateRecipe(recipeDraft);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     if (!recipeDraft) return;
     setSaving(true);
     setError(null);
@@ -129,7 +219,16 @@ export default function App() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: 16, fontFamily: "system-ui, Arial" }}>
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        padding: "24px",
+        boxSizing: "border-box",
+        fontFamily: "system-ui, Arial"
+      }}
+    >
       <h1 style={{ marginBottom: 4 }}>{title}</h1>
       <div style={{ color: "#555", marginBottom: 12 }}>{status}</div>
 
@@ -142,7 +241,7 @@ export default function App() {
       {mode === "list" && (
         <>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {/*<button onClick={refreshAll}>Refresh</button>*/}
+            <button onClick={refreshAll}>Refresh</button>
             <button onClick={openCreate}>+ Create recipe</button>
           </div>
 
@@ -190,38 +289,45 @@ export default function App() {
         <>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <button onClick={() => setMode("list")}>← Back</button>
-            <button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</button>
+            <button onClick={save} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </button>
+            {editingId && (
+              <button onClick={() => publish(editingId)}>
+                Publish
+              </button>
+            )}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+              gap: 16,
+              alignItems: "start",
+              width: "100%"
+            }}
+          >
             <div>
-              <label>Title</label>
-              <input
-                value={recipeDraft.title || ""}
-                onChange={(e) => updateField("title", e.target.value)}
-                style={{ width: "100%", marginBottom: 10 }}
-              />
-
-              <label>Description</label>
-              <textarea
-                value={recipeDraft.description || ""}
-                onChange={(e) => updateField("description", e.target.value)}
-                style={{ width: "100%", minHeight: 120, marginBottom: 10 }}
-              />
-
-              <label>Serve Item ID</label>
-              <input
-                value={recipeDraft.serveItemId || ""}
-                onChange={(e) => updateField("serveItemId", e.target.value)}
-                style={{ width: "100%", marginBottom: 10 }}
-              />
-
-              
+              <RecipeForm recipe={recipeDraft} setRecipe={setRecipeDraft} />
             </div>
 
-            <div>
-              <label>JSON Preview</label>
-              <pre style={{ background: "#111", color: "#eee", padding: 12, borderRadius: 8, overflow: "auto", maxHeight: 420 }}>
+            <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
+              <h2 style={{ marginTop: 0 }}>JSON Preview</h2>
+              <pre
+                style={{
+                  background: "#111",
+                  color: "#eee",
+                  padding: 12,
+                  borderRadius: 8,
+                  width: "100%",
+                  height: "720px",
+                  overflowX: "auto",
+                  overflowY: "auto",
+                  whiteSpace: "pre",
+                  boxSizing: "border-box"
+                }}
+              >
                 {JSON.stringify(recipeDraft, null, 2)}
               </pre>
             </div>
